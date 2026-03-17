@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "StelumPy"
+version = "0.1.0"
+description = "Read, analyse, and visualise stellar model profile sequences"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "pandas",
+    "matplotlib",
+]
+
+[tool.setuptools.packages.find]
+where = [".."]
+include = ["StelumPy"]
