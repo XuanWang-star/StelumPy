@@ -4,9 +4,13 @@ stellarmod.io.model
 Reads and parses a single stellar model profile file.
 """
 
+import logging
+
 import pandas as pd
 import numpy as np
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 class Model:
@@ -117,18 +121,26 @@ class Model:
     # ------------------------------------------------------------------
 
     def summary(self) -> None:
+        """Print a summary of the model to stdout."""
         sep = '=' * 50
-        print(sep)
-        print("Model Summary")
-        print(sep)
-        print(f"File:        {self.file_path.name}")
-        print(f"Data type:   {self.data_type}")
-        print(f"Mesh points: {self.mesh_number}")
-        print(f"T_eff:       {self.T_eff:.2f} K")
-        print(f"log(g):      {self.log_g:.2f}")
-        print(sep)
+        lines = [
+            sep,
+            "Model Summary",
+            sep,
+            f"File:        {self.file_path.name}",
+            f"Data type:   {self.data_type}",
+            f"Mesh points: {self.mesh_number}",
+            f"T_eff:       {self.T_eff:.2f} K",
+            f"log(g):      {self.log_g:.2f}",
+            sep,
+        ]
         if self.df is not None:
-            print(f"DataFrame shape: {self.df.shape}")
+            lines.append(f"DataFrame shape: {self.df.shape}")
+        logger.info("\n".join(lines))
+        # Also print for backward compatibility
+        for line in lines:
+            print(line)
+        if self.df is not None:
             print(self.df.head())
 
     def __repr__(self) -> str:

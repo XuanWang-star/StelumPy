@@ -5,12 +5,15 @@ Loads an ordered sequence of stellar model files from the sq/ directory
 structure and reads the accompanying seq.txt evolution table.
 """
 
+import logging
 import re
 import pandas as pd
 import numpy as np
 from pathlib import Path
 
 from .model import Model
+
+logger = logging.getLogger(__name__)
 
 
 class Sequence:
@@ -82,14 +85,14 @@ class Sequence:
             if not path.exists():
                 raise FileNotFoundError(f"{label} not found: {path}")
             if self.verbose:
-                print(f"✓ Found {label}: {path}")
+                logger.info("✓ Found %s: %s", label, path)
 
         if self.verbose and self.idx_file.exists():
-            print(f"✓ Found idx.txt: {self.idx_file}")
+            logger.info("✓ Found idx.txt: %s", self.idx_file)
 
     def _load_seq_data(self) -> None:
         if self.verbose:
-            print(f"\nReading evolution sequence from {self.seq_file.name}…")
+            logger.info("\nReading evolution sequence from %s…", self.seq_file.name)
         try:
             self.seq_data = pd.read_csv(
                 self.seq_file,
@@ -100,12 +103,16 @@ class Sequence:
             )
             self.age_sequence = self.seq_data['Age'].values
             if self.verbose:
-                print(f"✓ Loaded {len(self.seq_data)} rows from seq.txt")
-                print(f"  Age range: {self.age_sequence.min():.2e} – {self.age_sequence.max():.2e}")
+                logger.info("✓ Loaded %d rows from seq.txt", len(self.seq_data))
+                logger.info(
+                    "  Age range: %.2e – %.2e",
+                    self.age_sequence.min(),
+                    self.age_sequence.max(),
+                )
         except Exception as exc:
             if self.verbose:
-                print(f"⚠ Could not parse seq.txt: {exc}")
-                print("  Will use model indices as time sequence.")
+                logger.warning("⚠ Could not parse seq.txt: %s", exc)
+                logger.warning("  Will use model indices as time sequence.")
             self.seq_data = None
             self.age_sequence = None
 
@@ -133,19 +140,23 @@ class Sequence:
         self.num_models = len(self.file_paths)
 
         if self.verbose:
-            print(f"\nLoading {self.num_models} models from {self.models_directory}…")
+            logger.info(
+                "\nLoading %d models from %s…",
+                self.num_models,
+                self.models_directory,
+            )
 
         for i, path in enumerate(self.file_paths):
             try:
                 self.models.append(Model(path))
                 if self.verbose and (i + 1) % 10 == 0:
-                    print(f"  {i + 1}/{self.num_models} loaded…")
+                    logger.info("  %d/%d loaded…", i + 1, self.num_models)
             except Exception as exc:
                 if self.verbose:
-                    print(f"  ⚠ Skipping {path.name}: {exc}")
+                    logger.warning("  ⚠ Skipping %s: %s", path.name, exc)
 
         if self.verbose:
-            print(f"✓ Successfully loaded {len(self.models)} models.")
+            logger.info("✓ Successfully loaded %d models.", len(self.models))
 
     # ------------------------------------------------------------------
     # Public accessors
@@ -174,6 +185,7 @@ class Sequence:
         analyzer = SequenceAnalyzer(self)
         df = analyzer.create_evolution_dataframe(parameters)
         df.to_csv(output_file, index=False)
+        logger.info("Evolution data exported to %s", output_file)
         print(f"Evolution data exported to {output_file}")
 
     # ------------------------------------------------------------------
@@ -181,23 +193,34 @@ class Sequence:
     # ------------------------------------------------------------------
 
     def summary(self) -> None:
+        """Print a summary of the sequence to stdout."""
         sep = '=' * 70
-        print(sep)
-        print("Sequence Summary")
-        print(sep)
-        print(f"sq directory:     {self.sq_directory}")
-        print(f"Models directory: {self.models_directory}")
-        print(f"Models loaded:    {len(self.models)}")
-        print(sep)
+        lines = [
+            sep,
+            "Sequence Summary",
+            sep,
+            f"sq directory:     {self.sq_directory}",
+            f"Models directory: {self.models_directory}",
+            f"Models loaded:    {len(self.models)}",
+            sep,
+        ]
         if self.models and self.age_sequence is not None:
-            print(f"\nAge range:  {self.age_sequence.min():.2e} – {self.age_sequence.max():.2e}")
-            print(f"\nFirst model: {self.file_paths[0].name}  "
-                    f"T_eff={self.models[0].T_eff:.1f} K  "
-                    f"log_g={self.models[0].log_g:.2f}")
-            print(f"Last  model: {self.file_paths[-1].name}  "
-                    f"T_eff={self.models[-1].T_eff:.1f} K  "
-                    f"log_g={self.models[-1].log_g:.2f}")
-        print(sep)
+            lines.extend([
+                "",
+                f"Age range:  {self.age_sequence.min():.2e} – {self.age_sequence.max():.2e}",
+                "",
+                f"First model: {self.file_paths[0].name}  "
+                f"T_eff={self.models[0].T_eff:.1f} K  "
+                f"log_g={self.models[0].log_g:.2f}",
+                f"Last  model: {self.file_paths[-1].name}  "
+                f"T_eff={self.models[-1].T_eff:.1f} K  "
+                f"log_g={self.models[-1].log_g:.2f}",
+            ])
+        lines.append(sep)
+        logger.info("\n".join(lines))
+        # Also print for backward compatibility
+        for line in lines:
+            print(line)
 
     def __len__(self) -> int:
         return len(self.models)

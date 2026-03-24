@@ -33,9 +33,12 @@ Two usage modes
 from __future__ import annotations
 
 import argparse
+import logging
 import shutil
 import sys
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -112,7 +115,7 @@ def find_best_model(
         copy_to = seq_path
 
     if verbose:
-        print(f"Loading sequence from: {seq_path}")
+        logger.info("Loading sequence from: %s", seq_path)
 
     seq      = Sequence(seq_path, verbose=verbose)
     analyser = SequenceAnalyzer(seq)
@@ -134,7 +137,7 @@ def find_best_model(
             if seq_src.exists():
                 shutil.copy2(seq_src, dest_dir / "seq.txt")
             else:
-                print(f"  ⚠  seq.txt not found at {seq_src}", file=sys.stderr)
+                logger.warning("  ⚠ seq.txt not found at %s", seq_src)
 
     result["copied_to"] = copied_to
 
@@ -157,24 +160,32 @@ def _print_summary(
     copy_seq: bool,
     seq_path: Path,
 ) -> None:
+    """Print a summary of the matching result to stdout."""
     sep = "=" * 60
-    print(sep)
-    print("  Best-Match Model  —  core He search")
-    print(sep)
-    print(f"  Target X_He    : {target_he:.6f}  (n_points={n_points})")
-    print(f"  Matched X_He   : {result['he_core']:.6f}")
-    print(f"  Δ (match−target): {result['delta']:+.2e}")
-    print(f"  Sequence index  : {result['index']}")
-    print(f"  Model file      : {result['model'].file_path}")
-    print(f"  T_eff           : {result['T_eff']:.1f} K")
-    print(f"  log g           : {result['log_g']:.4f}")
-    if result['age'] == result['age']:          # not nan
-        print(f"  Age             : {result['age']:.4e} yr")
+    lines = [
+        sep,
+        "  Best-Match Model  —  core He search",
+        sep,
+        f"  Target X_He    : {target_he:.6f}  (n_points={n_points})",
+        f"  Matched X_He   : {result['he_core']:.6f}",
+        f"  Δ (match−target): {result['delta']:+.2e}",
+        f"  Sequence index  : {result['index']}",
+        f"  Model file      : {result['model'].file_path}",
+        f"  T_eff           : {result['T_eff']:.1f} K",
+        f"  log g           : {result['log_g']:.4f}",
+    ]
+    if result['age'] == result['age']:  # not nan
+        lines.append(f"  Age             : {result['age']:.4e} yr")
     if copied_to is not None:
-        print(f"  Copied model to : {copied_to}")
+        lines.append(f"  Copied model to : {copied_to}")
         if copy_seq:
-            print(f"  Copied seq.txt  : {copied_to.parent / 'seq.txt'}")
-    print(sep)
+            lines.append(f"  Copied seq.txt  : {copied_to.parent / 'seq.txt'}")
+    lines.append(sep)
+    
+    logger.info("\n".join(lines))
+    # Also print for backward compatibility
+    for line in lines:
+        print(line)
 
 
 # ---------------------------------------------------------------------------
@@ -252,10 +263,9 @@ def main(argv: list[str] | None = None) -> None:
 
     # Return a non-zero exit code if the match is poor (|Δ| > 0.05)
     if abs(result["delta"]) > 0.05:
-        print(
-            f"WARNING: large residual |Δ| = {abs(result['delta']):.4f}  "
-            "(> 0.05).  Check your target value.",
-            file=sys.stderr,
+        logger.warning(
+            "WARNING: large residual |Δ| = %.4f (> 0.05). Check your target value.",
+            abs(result["delta"]),
         )
         sys.exit(1)
 

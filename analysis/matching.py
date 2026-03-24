@@ -7,12 +7,15 @@ for a Sequence of stellar models.
 
 from __future__ import annotations
 
+import logging
 import numpy as np
 import pandas as pd
 from pathlib import Path
-
+from typing import Optional, Tuple
 from ..io.model import Model
 from ..io.sequence import Sequence
+
+logger = logging.getLogger(__name__)
 
 
 class SequenceAnalyzer:
@@ -243,10 +246,21 @@ class SequenceAnalyzer:
         """Return normalised weighted Euclidean distances to (T_eff_target, log_g_target)."""
         T_arr = np.array([m.T_eff for m in self.seq.models])
         g_arr = np.array([m.log_g for m in self.seq.models])
-        T_n = (T_arr - T_arr.mean()) / T_arr.std()
-        g_n = (g_arr - g_arr.mean()) / g_arr.std()
-        T_t = (T_eff_target - T_arr.mean()) / T_arr.std()
-        g_t = (log_g_target - g_arr.mean()) / g_arr.std()
+        
+        # Use ddof=1 for sample std and add small epsilon to avoid division by zero
+        T_std = T_arr.std(ddof=1) if len(T_arr) > 1 else 1.0
+        g_std = g_arr.std(ddof=1) if len(g_arr) > 1 else 1.0
+        T_mean = T_arr.mean()
+        g_mean = g_arr.mean()
+        
+        # Avoid division by zero
+        T_std = max(T_std, 1e-10)
+        g_std = max(g_std, 1e-10)
+        
+        T_n = (T_arr - T_mean) / T_std
+        g_n = (g_arr - g_mean) / g_std
+        T_t = (T_eff_target - T_mean) / T_std
+        g_t = (log_g_target - g_mean) / g_std
         return np.sqrt(weight_T_eff * (T_n - T_t) ** 2 + weight_log_g * (g_n - g_t) ** 2)
 
     def _teff_logg_dict(self, idx: int, distances: np.ndarray,
@@ -297,4 +311,7 @@ class SequenceAnalyzer:
         n = min(n_models, len(self.seq.models))
         return [self._teff_logg_dict(int(i), d, T_eff_target, log_g_target)
                 for i in np.argsort(d)[:n]]
+
+
+
 

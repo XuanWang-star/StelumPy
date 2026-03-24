@@ -6,12 +6,15 @@ SequencePlotter — all visualisation for a Sequence of stellar models.
 
 from __future__ import annotations
 
+import logging
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 
 from ..io.sequence import Sequence
 from ..analysis.matching import SequenceAnalyzer
+
+logger = logging.getLogger(__name__)
 
 
 class SequencePlotter:
