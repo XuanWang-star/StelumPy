@@ -13,6 +13,10 @@ dependencies = [
     "matplotlib",
 ]
 
+
+[project.scripts]
+find_best_model = "StelumPy.cli:main"
+
 [tool.setuptools.packages.find]
 where = [".."]
 include = ["StelumPy"]
