@@ -5,12 +5,17 @@ Loads an ordered sequence of stellar model files from the sq/ directory
 structure and reads the accompanying seq.txt evolution table.
 """
 
+from __future__ import annotations
+
 import logging
 import re
-import pandas as pd
-import numpy as np
 from pathlib import Path
+from typing import Optional
 
+import numpy as np
+import pandas as pd
+
+from ..exceptions import SequenceFileError, ValidationError
 from .model import Model
 
 logger = logging.getLogger(__name__)
@@ -27,19 +32,44 @@ class Sequence:
         ├── seq.txt     ← global evolution table (one row per time step)
         └── idx.txt     ← (optional) index file
 
+    Parameters
+    ----------
+    sq_directory : str or Path
+        Path to the sequence directory.
+    max_models : int, optional
+        Maximum number of models to load (None = load all).
+    verbose : bool, optional
+        Print loading progress (default: False).
+
     Attributes
     ----------
     sq_directory : Path
+        Path to the sequence directory.
     models_directory : Path
+        Path to the 5mext subdirectory.
     models : list[Model]
+        List of loaded Model objects.
     num_models : int
-    seq_data : pd.DataFrame | None   Full seq.txt table.
-    age_sequence : np.ndarray | None  Age column from seq.txt.
+        Number of models loaded.
+    seq_data : pd.DataFrame or None
+        Full seq.txt evolution table.
+    age_sequence : np.ndarray or None
+        Age column from seq.txt.
     file_paths : list[Path]
-    model_index : list[int | None]
+        Paths to all model files.
+    model_index : list[int or None]
+        Model indices extracted from filenames.
+
+    Examples
+    --------
+    >>> seq = Sequence("path/to/sq/")  # doctest: +SKIP
+    >>> len(seq)  # doctest: +SKIP
+    100
+    >>> seq.get_age(0)  # doctest: +SKIP
+    1.0e+06
     """
 
-    SEQ_COLUMNS = [
+    SEQ_COLUMNS: list[str] = [
         'Mod', 'Teff', 'Log_g', 'Rayon', 'Age', 'Lum',
         'Log_Tc', 'Log_Pc', 'Log_rhoc', 'M_x_M', 'Log_q_x',
         'Lum_nu', 'Log_H', 'Log_He', 'Log_C', 'Log_O',
@@ -50,16 +80,16 @@ class Sequence:
     def __init__(
         self,
         sq_directory: str | Path,
-        max_models: int | None = None,
+        max_models: Optional[int] = None,
         verbose: bool = False,
-    ):
-        self.sq_directory = Path(sq_directory)
-        self.models_directory = self.sq_directory / '5mext'
-        self.seq_file = self.sq_directory / 'seq.txt'
-        self.idx_file = self.sq_directory / 'idx.txt'
+    ) -> None:
+        self.sq_directory: Path = Path(sq_directory)
+        self.models_directory: Path = self.sq_directory / '5mext'
+        self.seq_file: Path = self.sq_directory / 'seq.txt'
+        self.idx_file: Path = self.sq_directory / 'idx.txt'
 
-        self.max_models = max_models
-        self.verbose = verbose
+        self.max_models: Optional[int] = max_models
+        self.verbose: bool = verbose
 
         self.file_paths: list[Path] = []
         self.models: list[Model] = []
@@ -72,18 +102,15 @@ class Sequence:
         self._load_seq_data()
         self._load_models()
 
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
     def _validate_structure(self) -> None:
+        """Validate the sequence directory structure."""
         for path, label in [
             (self.sq_directory,    'sq directory'),
             (self.models_directory,'5mext directory'),
             (self.seq_file,        'seq.txt'),
         ]:
             if not path.exists():
-                raise FileNotFoundError(f"{label} not found: {path}")
+                raise SequenceFileError(f"{label} not found: {path}")
             if self.verbose:
                 logger.info("✓ Found %s: %s", label, path)
 
@@ -91,6 +118,7 @@ class Sequence:
             logger.info("✓ Found idx.txt: %s", self.idx_file)
 
     def _load_seq_data(self) -> None:
+        """Load the seq.txt evolution table."""
         if self.verbose:
             logger.info("\nReading evolution sequence from %s…", self.seq_file.name)
         try:
@@ -117,9 +145,10 @@ class Sequence:
             self.age_sequence = None
 
     def _get_file_list(self) -> tuple[list[Path], list[int | None]]:
+        """Get sorted list of model files and their indices."""
         files = [f for f in self.models_directory.glob('*') if f.is_file()]
         if not files:
-            raise FileNotFoundError(f"No model files found in {self.models_directory}")
+            raise SequenceFileError(f"No model files found in {self.models_directory}")
 
         # md\d+.txt files sort to the end; everything else sorts by name
         files.sort(key=lambda x: (1 if self._MD_PATTERN.match(x.name) else 0, x.name))
@@ -136,6 +165,7 @@ class Sequence:
         return files, model_index
 
     def _load_models(self) -> None:
+        """Load all model files."""
         self.file_paths, self.model_index = self._get_file_list()
         self.num_models = len(self.file_paths)
 
@@ -158,39 +188,87 @@ class Sequence:
         if self.verbose:
             logger.info("✓ Successfully loaded %d models.", len(self.models))
 
-    # ------------------------------------------------------------------
-    # Public accessors
-    # ------------------------------------------------------------------
-
     def get_model(self, index: int) -> Model:
-        """Return model at *index* (0-based)."""
+        """
+        Return model at index (0-based).
+
+        Parameters
+        ----------
+        index : int
+            Index of the model to retrieve.
+
+        Returns
+        -------
+        Model
+            The requested model.
+
+        Raises
+        ------
+        ValidationError
+            If index is out of range.
+        """
         if not 0 <= index < len(self.models):
-            raise IndexError(f"Index {index} out of range [0, {len(self.models) - 1}]")
+            raise ValidationError(
+                f"Index {index} out of range [0, {len(self.models) - 1}]"
+            )
         return self.models[index]
 
     def get_age(self, index: int) -> float:
-        """Return the stellar age at *index*."""
+        """
+        Return the stellar age at index.
+
+        Parameters
+        ----------
+        index : int
+            Index of the age to retrieve.
+
+        Returns
+        -------
+        float
+            The stellar age in years.
+
+        Raises
+        ------
+        ValidationError
+            If index is out of range or age_sequence not available.
+        """
         if self.age_sequence is None:
-            raise ValueError("age_sequence not available (seq.txt could not be parsed).")
+            raise ValidationError(
+                "age_sequence not available (seq.txt could not be parsed)"
+            )
         if not 0 <= index < len(self.age_sequence):
-            raise IndexError(f"Index {index} out of range.")
+            raise ValidationError(f"Index {index} out of range")
         return float(self.age_sequence[index])
 
-    def export_evolution_csv(self, output_file: str | Path, parameters: list[str]) -> None:
+    def export_evolution_csv(
+        self,
+        output_file: str | Path,
+        parameters: list[str],
+    ) -> None:
         """
-        Export the evolution of *parameters* to a CSV file.
-        Requires a SequenceAnalyzer; kept here for convenience via lazy import.
-        """
-        from ..analysis.matching import SequenceAnalyzer
-        analyzer = SequenceAnalyzer(self)
-        df = analyzer.create_evolution_dataframe(parameters)
-        df.to_csv(output_file, index=False)
-        logger.info("Evolution data exported to %s", output_file)
-        print(f"Evolution data exported to {output_file}")
+        Export the evolution of parameters to a CSV file.
 
-    # ------------------------------------------------------------------
-    # Display
-    # ------------------------------------------------------------------
+        Parameters
+        ----------
+        output_file : str or Path
+            Path to the output CSV file.
+        parameters : list[str]
+            List of parameter names to export.
+
+        Raises
+        ------
+        SequenceFileError
+            If export fails.
+        """
+        try:
+            from ..analysis.matching import SequenceAnalyzer
+            analyzer = SequenceAnalyzer(self)
+            df = analyzer.create_evolution_dataframe(parameters)
+            df.to_csv(output_file, index=False)
+            logger.info("Evolution data exported to %s", output_file)
+            print(f"Evolution data exported to {output_file}")
+        except Exception as exc:
+            raise SequenceFileError(f"Failed to export evolution data: {exc}") from exc
 
     def summary(self) -> None:
         """Print a summary of the sequence to stdout."""

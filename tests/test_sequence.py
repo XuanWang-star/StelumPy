@@ -8,6 +8,7 @@ from pathlib import Path
 
 from StelumPy.io.sequence import Sequence
 from StelumPy.io.model import Model
+from StelumPy.exceptions import SequenceFileError, ValidationError
 
 
 class TestSequenceInit:
@@ -22,27 +23,27 @@ class TestSequenceInit:
         assert len(seq.models) == 3
 
     def test_init_with_nonexistent_directory(self, temp_dir):
-        """Test Sequence raises FileNotFoundError for missing directory."""
+        """Test Sequence raises SequenceFileError for missing directory."""
         nonexistent = temp_dir / "nonexistent"
-        with pytest.raises(FileNotFoundError):
+        with pytest.raises(SequenceFileError):
             Sequence(nonexistent, verbose=False)
 
     def test_init_without_seq_file(self, temp_dir):
-        """Test Sequence raises FileNotFoundError when seq.txt missing."""
+        """Test Sequence raises SequenceFileError when seq.txt missing."""
         seq_dir = temp_dir / "incomplete_seq"
         models_dir = seq_dir / "5mext"
         models_dir.mkdir(parents=True)
         # Don't create seq.txt
-        with pytest.raises(FileNotFoundError):
+        with pytest.raises(SequenceFileError):
             Sequence(seq_dir, verbose=False)
 
     def test_init_without_models_directory(self, temp_dir):
-        """Test Sequence raises FileNotFoundError when 5mext missing."""
+        """Test Sequence raises SequenceFileError when 5mext missing."""
         seq_dir = temp_dir / "incomplete_seq2"
         seq_dir.mkdir()
         (seq_dir / "seq.txt").write_text("dummy")
         # Don't create 5mext/
-        with pytest.raises(FileNotFoundError):
+        with pytest.raises(SequenceFileError):
             Sequence(seq_dir, verbose=False)
 
 
@@ -84,12 +85,12 @@ class TestSequenceAccessors:
 
     def test_get_model_invalid_index(self, sample_sequence):
         """Test get_model with out-of-range index."""
-        with pytest.raises(IndexError):
+        with pytest.raises(ValidationError):
             sample_sequence.get_model(10)
 
     def test_get_model_negative_index(self, sample_sequence):
         """Test get_model with negative index."""
-        with pytest.raises(IndexError):
+        with pytest.raises(ValidationError):
             sample_sequence.get_model(-1)
 
     def test_get_age_valid_index(self, sample_sequence):
@@ -99,7 +100,7 @@ class TestSequenceAccessors:
 
     def test_get_age_invalid_index(self, sample_sequence):
         """Test get_age with out-of-range index."""
-        with pytest.raises(IndexError):
+        with pytest.raises(ValidationError):
             sample_sequence.get_age(10)
 
     def test_getitem(self, sample_sequence):

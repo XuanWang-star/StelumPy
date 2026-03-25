@@ -7,6 +7,7 @@ import numpy as np
 
 from StelumPy.analysis.matching import SequenceAnalyzer
 from StelumPy import Model, Sequence
+from StelumPy.exceptions import MatchingError, ProfileColumnError, SequenceFileError
 
 
 class TestSequenceAnalyzerInit:
@@ -147,13 +148,13 @@ class TestHeCoreMatching:
         seq_dir = temp_dir / "empty_seq"
         seq_dir.mkdir()
         create_test_seq_file(seq_dir, num_models=0)
-        
+
         # Create empty 5mext directory
         models_dir = seq_dir / "5mext"
         models_dir.mkdir()
-        
+
         # Sequence will fail to load models, so we test the ValueError path
-        with pytest.raises((ValueError, FileNotFoundError)):
+        with pytest.raises((MatchingError, SequenceFileError)):
             seq = Sequence(seq_dir, verbose=False)
             if seq.models:  # Only test if models were loaded
                 analyzer = SequenceAnalyzer(seq)
@@ -203,8 +204,8 @@ class TestHeProfileMatch:
         analyzer = SequenceAnalyzer(sample_sequence)
         target = sample_sequence.models[0]
         target.df = None
-        
-        with pytest.raises(ValueError, match="no profile data"):
+
+        with pytest.raises(ProfileColumnError, match="no profile data"):
             analyzer.he_profile_match(target, sample_sequence.models[1])
 
     def test_he_profile_match_missing_column(self, sample_sequence):
@@ -213,8 +214,8 @@ class TestHeProfileMatch:
         target = sample_sequence.models[0]
         # Remove X_He column
         target.df = target.df.drop(columns=['X_He'])
-        
-        with pytest.raises(KeyError, match="X_He"):
+
+        with pytest.raises(ProfileColumnError, match="X_He"):
             analyzer.he_profile_match(target, sample_sequence.models[1])
 
 

@@ -6,6 +6,7 @@ import pytest
 from pathlib import Path
 
 from StelumPy.io.model import Model
+from StelumPy.exceptions import ModelFileError, ProfileColumnError, ValidationError
 
 
 class TestModelInit:
@@ -18,9 +19,9 @@ class TestModelInit:
         assert model.df is not None
 
     def test_init_with_nonexistent_file(self, temp_dir):
-        """Test Model raises FileNotFoundError for missing file."""
+        """Test Model raises ModelFileError for missing file."""
         nonexistent = temp_dir / "nonexistent.txt"
-        with pytest.raises(FileNotFoundError):
+        with pytest.raises(ModelFileError):
             Model(nonexistent)
 
     def test_file_path_is_path_object(self, sample_model_file):
@@ -69,7 +70,7 @@ class TestModelData:
 
     def test_get_column_invalid(self, sample_model):
         """Test get_column raises for invalid column name."""
-        with pytest.raises(KeyError):
+        with pytest.raises(ProfileColumnError):
             sample_model.get_column('nonexistent_column')
 
 
@@ -92,7 +93,7 @@ class TestModelHeCore:
     def test_he_core_he_no_data(self, sample_model):
         """Test he_core_he raises when no data loaded."""
         sample_model.df = None
-        with pytest.raises(ValueError, match="No profile data loaded"):
+        with pytest.raises(ProfileColumnError, match="No profile data"):
             sample_model.he_core_he()
 
 

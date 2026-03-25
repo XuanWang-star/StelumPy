@@ -33,6 +33,25 @@ from .io.model     import Model
 from .io.sequence  import Sequence
 from .analysis.matching import SequenceAnalyzer
 from .plotting.plots    import SequencePlotter
+from .exceptions import (
+    StelumPyError,
+    ModelFileError,
+    SequenceFileError,
+    MatchingError,
+    ProfileColumnError,
+    ValidationError,
+)
 
-__all__ = ["Model", "Sequence", "SequenceAnalyzer", "SequencePlotter"]
+__all__ = [
+    "Model",
+    "Sequence",
+    "SequenceAnalyzer",
+    "SequencePlotter",
+    "StelumPyError",
+    "ModelFileError",
+    "SequenceFileError",
+    "MatchingError",
+    "ProfileColumnError",
+    "ValidationError",
+]
 __version__ = "0.1.0"

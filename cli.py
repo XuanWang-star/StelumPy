@@ -45,11 +45,15 @@ logger = logging.getLogger(__name__)
 # Core function
 # ---------------------------------------------------------------------------
 
+# Sentinel value for default copy_to behavior
+_COPY_TO_DEFAULT = object()
+
+
 def find_best_model(
     seq_path: str | Path,
     target_he: float,
     n_points: int = 1,
-    copy_to: str | Path | None = ...,
+    copy_to: str | Path | None | object = _COPY_TO_DEFAULT,  # Use sentinel
     copy_seq: bool = False,
     verbose: bool = True,
 ) -> dict:
@@ -111,8 +115,11 @@ def find_best_model(
     seq_path = Path(seq_path)
 
     # Resolve default copy destination: the seq_path directory itself
-    if copy_to is ...:
+    if copy_to is _COPY_TO_DEFAULT:
         copy_to = seq_path
+    elif copy_to is None:
+        # Explicitly disable copying
+        pass
 
     if verbose:
         logger.info("Loading sequence from: %s", seq_path)
@@ -256,7 +263,7 @@ def main(argv: list[str] | None = None) -> None:
         seq_path  = args.seq_path,
         target_he = args.target_he,
         n_points  = args.n_points,
-        copy_to   = None if args.no_copy else (... if args.copy_to is None else args.copy_to),
+        copy_to   = _COPY_TO_DEFAULT if args.no_copy else (seq_path if args.copy_to is None else args.copy_to),
         copy_seq  = args.copy_seq,
         verbose   = not args.quiet,
     )
