@@ -371,7 +371,7 @@ class ModelExplorer(_BaseExplorer):
         x = _col_to_values(self.model.df, x_col)
         y = _col_to_values(self.model.df, y_col)
 
-        ax.plot(x, y, lw=1.8, color="#2166ac")
+        ax.plot(x, y, lw=1.5, color="black", ls="--")
         ax.set_xlabel(self._xlabels[x_col], fontsize=11)
         ax.set_ylabel(self._ylabels[y_col], fontsize=11)
         fname = Path(self.model.file_path).name
@@ -566,12 +566,12 @@ class SequenceExplorer(_BaseExplorer):
         ax.cla()
         x = self.seq.seq_data[ev_x_col].values.astype(float)
         y = self.seq.seq_data[ev_y_col].values.astype(float)
-        ax.plot(x, y, lw=1.8, color="#2166ac")
+        ax.plot(x, y, lw=1.5, color="black", ls="--")
 
         if self._sel_idx is not None:
             sx, sy = x[self._sel_idx], y[self._sel_idx]
-            ax.axvline(sx, color="#d73027", lw=0.8, ls="--", alpha=0.6)
-            ax.scatter([sx], [sy], color="#d73027", zorder=5, s=40,
+            ax.axvline(sx, color="black", lw=0.8, ls=":", alpha=0.6)
+            ax.scatter([sx], [sy], color="black", zorder=5, s=40,
                        label=f"model #{self._sel_idx}")
             ax.legend(fontsize=8)
 
@@ -607,7 +607,7 @@ class SequenceExplorer(_BaseExplorer):
         if self.seq.age_sequence is not None:
             age_str = f"   age $= {self.seq.age_sequence[idx]:.3e}$ yr"
 
-        ax.plot(x, y, lw=1.8, color="#d95f02")
+        ax.plot(x, y, lw=1.5, color="black", ls="--")
         ax.set_xlabel(self._pr_xlabels[pr_x_col], fontsize=10)
         ax.set_ylabel(self._pr_ylabels[pr_y_col], fontsize=10)
         ax.set_title(

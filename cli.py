@@ -263,7 +263,7 @@ def main(argv: list[str] | None = None) -> None:
         seq_path  = args.seq_path,
         target_he = args.target_he,
         n_points  = args.n_points,
-        copy_to   = _COPY_TO_DEFAULT if args.no_copy else (seq_path if args.copy_to is None else args.copy_to),
+        copy_to   = _COPY_TO_DEFAULT if args.no_copy else (args.seq_path if args.copy_to is None else args.copy_to),
         copy_seq  = args.copy_seq,
         verbose   = not args.quiet,
     )
